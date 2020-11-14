@@ -55,7 +55,9 @@ def im_dataset_bsd500(mode='training', **kwargs):
     im_ds = im_dataset(BSD500_DATA_DIR, paths, 'jpg', from_rgb=True, **kwargs)
     return im_ds
 
-def im_dataset_bsd68(**kwargs):
+def im_dataset_bsd68(grey=True, **kwargs):
+    if not grey:
+        raise ValueError('Color images not available for BSD68')
     path = 'BSD68'
     im_ds = im_dataset(BSD68_DATA_DIR, [path], 'png', **kwargs)
     return im_ds
@@ -69,6 +71,7 @@ def im_dataset(
         noise_std=(0, 50),
         n_samples=None,
         from_rgb=False,
+        grey=True,
     ):
     file_ds = None
     for path in paths:
@@ -89,7 +92,7 @@ def im_dataset(
     ).map(
         decode_function, num_parallel_calls=tf.data.experimental.AUTOTUNE
     )
-    if from_rgb:
+    if from_rgb and grey:
         image_ds = image_ds.map(
             tf.image.rgb_to_grayscale, num_parallel_calls=tf.data.experimental.AUTOTUNE
         )
