@@ -1,0 +1,8 @@
+language: python
+cache: pip
+install:
+  - pip install numpy pytest
+  - pip install tensorflow
+
+script:
+  - pytest -s model_test.py
