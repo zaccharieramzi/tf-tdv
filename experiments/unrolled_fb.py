@@ -21,9 +21,9 @@ class UnrolledFB(Model):
         self.n_iter = n_iter
         self.init_step_size = init_step_size
         if self.weight_sharing:
-            self.original_denoiser = model_class(**model_kwargs)
-        self.denoisers = [
-            self.original_denoiser if self.weight_sharing else model_class(**model_kwargs)
+            self.original_prox = model_class(**model_kwargs)
+        self.proxs = [
+            self.original_prox if self.weight_sharing else model_class(**model_kwargs)
             for _ in range(self.n_iter)
         ]
         self.alphas = [  # equivalent of T/S
@@ -48,9 +48,9 @@ class UnrolledFB(Model):
 
     def call(self, inputs):
         current_image = inputs
-        for alpha, denoiser in zip(self.alphas, self.denoisers):
+        for alpha, prox in zip(self.alphas, self.proxs):
             new_image = current_image - alpha * self.grad(current_image, inputs)
-            new_image = denoiser(new_image)
+            new_image = prox(new_image)
             # NOTE: we use this decorrelation of var names to allow for
             # Nesterov implementation
             current_image = new_image
