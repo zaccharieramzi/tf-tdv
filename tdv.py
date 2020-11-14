@@ -18,7 +18,7 @@ class StudentActivation(Layer):
             self.nu = nu
 
     def call(self, inputs):
-        outputs = (1/2*self.nu) * tf.log(1 + self.nu * inputs**2)
+        outputs = (1/2*self.nu) * tf.math.log(1 + self.nu * inputs**2)
         return outputs
 
 class MicroBlock(Layer):
@@ -77,8 +77,8 @@ class BlurDownSample(Layer):
             inputs,
             self.blur_kernel,
             self.point_wise_kernel,
-            strides=2,
-            padding='same',
+            strides=[1, 2, 2, 1],
+            padding='SAME',
         )
         outputs = self.pool(blurred_downsample_inputs)
         return outputs
@@ -105,8 +105,8 @@ class BlurUpSample(Layer):
             outputs,
             self.blur_kernel,
             self.point_wise_kernel,
-            strides=1,
-            padding='same',
+            strides=[1, 1, 1, 1],
+            padding='SAME',
         )
         return outputs
 
@@ -161,7 +161,7 @@ class MacroBlock(Layer):
             ]
             self.unpools = [
                 BlurUpSample(
-                    pooling=pooling,
+                    unpooling=pooling,
                     n_filters=self.n_filters*self.multiplier**i_scale,
                 )
                 for i_scale in range(self.n_scales-1)
@@ -201,31 +201,33 @@ class MacroBlock(Layer):
 
     def call(self, inputs):
         scales = []
-        outputs = None
+        if self.first_macro:
+            outputs = inputs
+        else:
+            outputs = inputs[0]
         for i_scale in range(self.n_scales):
             if self.first_macro:
-                res_outputs = inputs
+                res_outputs = None
             else:
-                res_outputs = inputs[0]
-            if outputs is None:
-                outputs = res_outputs
-            else:
-                outputs = res_outputs + outputs
+                res_outputs = inputs[i_scale]
+            if i_scale > 0:
+                if res_outputs is not None:
+                    outputs = outputs + res_outputs
             outputs = self.down_blocks[i_scale](outputs)
             if i_scale < self.n_scales - 1:
                 scales.append(outputs)
                 outputs =  self.pools[i_scale](outputs)
         all_outputs = [outputs]
-        for i_scale in range(self.n_scales - 2, 0, -1):
+        for i_scale in range(self.n_scales - 2, -1, -1):
             outputs = self.unpools[i_scale](outputs)
-            outputs = tf.concatenate([outputs, scales[i_scale]], axis=-1)
+            outputs = tf.concat([outputs, scales[i_scale]], axis=-1)
             outputs = self.conv_concats[i_scale](outputs)
             outputs = self.up_blocks[i_scale](outputs)
             all_outputs.append(outputs)
         if self.last_macro:
             return outputs
         else:
-            return all_outputs
+            return all_outputs[::-1]
 
 class UnetMultiscaleResidual(Model):
     def __init__(
