@@ -12,7 +12,7 @@ def test_tdv_energy():
     )
     shape = [1, 32, 32, 1]
     res = model.energy(tf.zeros(shape))
-    assert res.shape.as_list() == (1, 1)
+    assert res.shape.as_list() == [1, 1]
 
 def test_tdv_call():
     model = TDV(
