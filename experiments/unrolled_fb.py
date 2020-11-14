@@ -26,7 +26,7 @@ class UnrolledFB(Model):
             self.original_prox if self.weight_sharing else model_class(**model_kwargs)
             for _ in range(self.n_iter)
         ]
-        self.alphas = self.add_weight(  # equivalent of T/S
+        self.alpha = self.add_weight(  # equivalent of T/S
             shape=(1,),
             initializer=tf.keras.initializers.constant(self.init_step_size),
             name=f'alpha',
