@@ -49,8 +49,9 @@ class UnrolledFB(Model):
     def call(self, inputs):
         current_image = inputs
         for alpha, prox in zip(self.alphas, self.proxs):
-            new_image = current_image - alpha * self.grad(current_image, inputs)
-            new_image = prox(new_image)
+            prox_eval = alpha * prox(current_image)
+            grad_eval = alpha * self.grad(current_image, inputs)
+            new_image = current_image - grad_eval - prox_eval
             # NOTE: we use this decorrelation of var names to allow for
             # Nesterov implementation
             current_image = new_image
