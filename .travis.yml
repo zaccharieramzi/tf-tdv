@@ -5,4 +5,4 @@ install:
   - pip install tensorflow
 
 script:
-  - pytest -s model_test.py
+  - pytest -s tdv_test.py
