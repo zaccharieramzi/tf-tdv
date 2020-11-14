@@ -26,14 +26,11 @@ class UnrolledFB(Model):
             self.original_prox if self.weight_sharing else model_class(**model_kwargs)
             for _ in range(self.n_iter)
         ]
-        self.alphas = [  # equivalent of T/S
-            self.add_weight(
-                shape=(1,),
-                initializer=tf.keras.initializers.constant(self.init_step_size),
-                name=f'alpha_{i}',
-            )
-            for i in range(self.n_iter)
-        ]
+        self.alphas = self.add_weight(  # equivalent of T/S
+            shape=(1,),
+            initializer=tf.keras.initializers.constant(self.init_step_size),
+            name=f'alpha',
+        )
         if self.inverse_problem == 'denoising':
             self.measurements_operator = lambda x: x
             self.measurements_operator_adjoint = lambda x: x
