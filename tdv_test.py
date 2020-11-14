@@ -14,6 +14,16 @@ def test_tdv_energy():
     res = model.energy(tf.zeros(shape))
     assert res.shape.as_list() == (1, 1)
 
+def test_tdv_call():
+    model = TDV(
+        n_macro=2,
+        n_scales=2,
+        n_filters=8,
+    )
+    shape = [1, 32, 32, 1]
+    res = model(tf.zeros(shape))
+    assert res.shape.as_list() == shape
+
 
 # def test_model_change():
 #     model = TDV(
