@@ -184,8 +184,7 @@ class MacroBlock(Layer):
                 for i_scale in range(self.n_scales-1)
             ]
         else:
-            self.pools = [MaxPool2D((2, 2)) for i_scale in range(self.n_scales)]
-            self.unpools = [UpSampling2D((2, 2)) for i_scale in range(self.n_scales-1)]
+            raise ValueError(f'Not possible to using pooling {self.pooling}')
         # concatenation
         self.conv_concats = [
             Conv2D(
