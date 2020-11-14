@@ -276,7 +276,7 @@ class UnetMultiscaleResidual(Model):
 
 class ZeroMean(Constraint):
     def __call__(self, w):
-        current_mean = tf.reduce_mean(w, axis=[1, 2, 3])
+        current_mean = tf.reduce_mean(w, axis=[0, 1, 2])
         w = w - current_mean
         return w
 
