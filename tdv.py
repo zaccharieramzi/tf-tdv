@@ -326,7 +326,11 @@ class TDV(Model):
 
 
     def call(self, inputs):
-        pass
+        with tf.GradientTape(watch_accessed_variables=False) as g:
+            g.watch(inputs)
+            r = self.energy(inputs)
+        prox = g.gradient(r, inputs)
+        return prox
 
     def energy(self, inputs):
         high_pass_inputs = self.K(inputs)
