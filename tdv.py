@@ -61,7 +61,6 @@ class BlurDownSample(Layer):
         super().__init__(**kwargs)
         self.pooling = pooling
         self.blur_kernel = tf.constant(BLUR_KERNEL)[..., None, None]
-        self.point_wise_kernel = tf.constant(1.)[None, None, None, None]
         if self.pooling == 'conv':
             self.pool = Conv2D(n_filters, 3, padding='same', use_bias=False)
         else:
@@ -70,7 +69,7 @@ class BlurDownSample(Layer):
     def build(self, input_shape):
         in_channels = input_shape[-1]
         self.blur_kernel = tf.tile(self.blur_kernel, [1, 1, in_channels, 1])
-        self.point_wise_kernel = tf.tile(self.point_wise_kernel, [1, 1, in_channels, in_channels])
+        self.point_wise_kernel = tf.eye(in_channels)[None, None]
 
     def call(self, inputs):
         blurred_downsample_inputs = tf.nn.separable_conv2d(
@@ -88,7 +87,6 @@ class BlurUpSample(Layer):
         super().__init__(**kwargs)
         self.unpooling = unpooling
         self.blur_kernel = tf.constant(BLUR_KERNEL)[..., None, None]
-        self.point_wise_kernel = tf.constant(1.)[None, None, None, None]
         if self.unpooling == 'conv':
             self.unpool = Conv2DTranspose(n_filters, 3, strides=(2, 2), padding='same', use_bias=False)
         else:
@@ -97,7 +95,7 @@ class BlurUpSample(Layer):
     def build(self, input_shape):
         in_channels = input_shape[-1]
         self.blur_kernel = tf.tile(self.blur_kernel, [1, 1, in_channels, 1])
-        self.point_wise_kernel = tf.tile(self.point_wise_kernel, [1, 1, in_channels, in_channels])
+        self.point_wise_kernel = tf.eye(in_channels)[None, None]
 
     def call(self, inputs):
         outputs = self.unpool(inputs)
