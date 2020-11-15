@@ -246,31 +246,23 @@ class UnetMultiscaleResidual(Model):
         self.pooling = pooling
         self.activation_str = activation_str
         self.use_bias = use_bias
-        macro_blocks_kwargs = dict(
-            n_scales=self.n_scales,
-            n_filters=self.n_filters,
-            multiplier=self.multiplier,
-            activation_str=self.activation_str,
-            pooling=self.pooling,
-            use_bias=self.use_bias,
-        )
-        self.first_macro_block = MacroBlock(
-            first_macro=True,
-            name='first_macro_block',
-            **macro_blocks_kwargs,
-        )
-        self.macro_blocks = [MacroBlock(**macro_blocks_kwargs) for _ in range(self.n_macro-2)]
-        self.last_macro_block = MacroBlock(
-            last_macro=True,
-            name='last_macro_block',
-            **macro_blocks_kwargs,
-        )
+        self.macro_blocks = [
+            MacroBlock(
+                n_scales=self.n_scales,
+                n_filters=self.n_filters,
+                multiplier=self.multiplier,
+                activation_str=self.activation_str,
+                pooling=self.pooling,
+                use_bias=self.use_bias,
+                first_macro=i_macro==0,
+                last_macro=i_macro==self.n_macro-1,
+            )
+            for i_macro in range(self.n_macro)
+        ]
 
     def call(self, inputs):
-        outputs = self.first_macro_block(inputs)
         for block in self.macro_blocks:
             outputs = block(outputs)
-        outputs = self.last_macro_block(outputs)
         return outputs
 
 class ZeroMean(Constraint):
@@ -289,6 +281,7 @@ class TDV(Model):
             pooling='blur-conv',
             activation_str='student',
             use_bias=False,
+            linear=False,
             **kwargs,
         ):
         super().__init__(**kwargs)
@@ -299,6 +292,7 @@ class TDV(Model):
         self.pooling = pooling
         self.activation_str = activation_str
         self.use_bias = use_bias
+        self.linear = linear
         self.K = Conv2D(
             self.n_filters,
             kernel_size=3,  # got this from the code
@@ -307,15 +301,16 @@ class TDV(Model):
             use_bias=False,
             kernel_constraint=ZeroMean(),
         )
-        self.N = UnetMultiscaleResidual(
-            n_macro=self.n_macro,
-            n_scales=self.n_scales,
-            n_filters=self.n_filters,
-            multiplier=self.multiplier,
-            pooling=self.pooling,
-            activation_str=self.activation_str,
-            use_bias=self.use_bias,
-        )
+        if not self.linear:
+            self.N = UnetMultiscaleResidual(
+                n_macro=self.n_macro,
+                n_scales=self.n_scales,
+                n_filters=self.n_filters,
+                multiplier=self.multiplier,
+                pooling=self.pooling,
+                activation_str=self.activation_str,
+                use_bias=self.use_bias,
+            )
         self.w = Conv2D(
             1,
             kernel_size=1,
@@ -333,7 +328,10 @@ class TDV(Model):
 
     def energy(self, inputs):
         high_pass_inputs = self.K(inputs)
-        outputs = self.N(high_pass_inputs)
+        if self.linear:
+            outputs = high_pass_inputs
+        else:
+            outputs = self.N(high_pass_inputs)
         outputs = self.w(outputs)
         outputs = tf.reduce_sum(outputs, axis=[1, 2])
         return outputs
