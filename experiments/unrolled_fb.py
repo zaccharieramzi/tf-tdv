@@ -26,11 +26,20 @@ class UnrolledFB(Model):
             self.original_reg_grad if self.weight_sharing else model_class(**model_kwargs)
             for _ in range(self.n_iter)
         ]
-        self.alpha = self.add_weight(  # equivalent of T/S
+        # I thought that the 2 step sizes were common
+        # but in the code it appears that they are not:
+        # https://github.com/VLOGroup/tdv/blob/master/model.py#L111
+        self.alpha = self.add_weight(
             shape=(1,),
             initializer=tf.keras.initializers.constant(self.init_step_size),
             constraint=tf.keras.constraints.NonNeg(),
             name='alpha',
+        )
+        self.lamda = self.add_weight(
+            shape=(1,),
+            initializer=tf.keras.initializers.constant(self.init_step_size),
+            constraint=tf.keras.constraints.NonNeg(),
+            name='lambda',
         )
         if self.inverse_problem == 'denoising':
             self.measurements_operator = lambda x: x
