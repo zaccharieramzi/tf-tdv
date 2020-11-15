@@ -57,7 +57,7 @@ class UnrolledFB(Model):
         current_image = inputs
         for reg_grad in self.reg_grads:
             reg_grad_eval = self.alpha * reg_grad(current_image)
-            grad_eval = self.alpha * self.grad(current_image, inputs)
+            grad_eval = self.lamda * self.grad(current_image, inputs)
             new_image = current_image - grad_eval - reg_grad_eval
             # NOTE: we use this decorrelation of var names to allow for
             # Nesterov implementation
