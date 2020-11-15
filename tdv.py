@@ -261,6 +261,7 @@ class UnetMultiscaleResidual(Model):
         ]
 
     def call(self, inputs):
+        outputs = inputs
         for block in self.macro_blocks:
             outputs = block(outputs)
         return outputs
