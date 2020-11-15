@@ -29,6 +29,7 @@ class UnrolledFB(Model):
         self.alpha = self.add_weight(  # equivalent of T/S
             shape=(1,),
             initializer=tf.keras.initializers.constant(self.init_step_size),
+            constraint=tf.keras.constraints.NonNeg(),
             name='alpha',
         )
         if self.inverse_problem == 'denoising':
