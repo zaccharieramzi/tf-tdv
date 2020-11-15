@@ -63,7 +63,10 @@ class ConvTranspose(Layer):
         return outputs
 
 class StudentActivation(Layer):
-    def __init__(self, nu=9, **kwargs):
+    # I found out in the code that nu is actually 1. and not 9. like stated
+    # in the paper
+    # https://github.com/VLOGroup/tdv/blob/master/ddr/tdv.py#L41
+    def __init__(self, nu=1, **kwargs):
         super().__init__(**kwargs)
         if nu is None:
             self.nu = self.add_weight(initializer=tf.initializers.constant(1.))
