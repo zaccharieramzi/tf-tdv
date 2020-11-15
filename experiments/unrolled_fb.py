@@ -37,7 +37,7 @@ class UnrolledFB(Model):
         )
         self.lamda = self.add_weight(
             shape=(1,),
-            initializer=tf.keras.initializers.constant(self.init_step_size),
+            initializer=tf.keras.initializers.constant(10*self.init_step_size),
             constraint=tf.keras.constraints.NonNeg(),
             name='lambda',
         )
