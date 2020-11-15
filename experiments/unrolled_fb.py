@@ -3,7 +3,7 @@ from tensorflow.keras.models import Model
 
 
 class UnrolledFB(Model):
-    """The unrolled Forward-Backward model with any kind of prox.
+    """The unrolled Forward-Backward model with any kind of regularizer gradient.
     """
     def __init__(
             self,
@@ -21,15 +21,15 @@ class UnrolledFB(Model):
         self.n_iter = n_iter
         self.init_step_size = init_step_size
         if self.weight_sharing:
-            self.original_prox = model_class(**model_kwargs)
-        self.proxs = [
-            self.original_prox if self.weight_sharing else model_class(**model_kwargs)
+            self.original_reg_grad = model_class(**model_kwargs)
+        self.reg_grads = [
+            self.original_reg_grad if self.weight_sharing else model_class(**model_kwargs)
             for _ in range(self.n_iter)
         ]
         self.alpha = self.add_weight(  # equivalent of T/S
             shape=(1,),
             initializer=tf.keras.initializers.constant(self.init_step_size),
-            name=f'alpha',
+            name='alpha',
         )
         if self.inverse_problem == 'denoising':
             self.measurements_operator = lambda x: x
@@ -45,10 +45,10 @@ class UnrolledFB(Model):
 
     def call(self, inputs):
         current_image = inputs
-        for prox in self.proxs:
-            prox_eval = self.alpha * prox(current_image)
+        for reg_grad in self.reg_grads:
+            reg_grad_eval = self.alpha * reg_grad(current_image)
             grad_eval = self.alpha * self.grad(current_image, inputs)
-            new_image = current_image - grad_eval - prox_eval
+            new_image = current_image - grad_eval - reg_grad_eval
             # NOTE: we use this decorrelation of var names to allow for
             # Nesterov implementation
             current_image = new_image
