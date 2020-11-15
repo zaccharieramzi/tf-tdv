@@ -71,7 +71,7 @@ class StudentActivation(Layer):
             self.nu = nu
 
     def call(self, inputs):
-        outputs = (1/2*self.nu) * tf.math.log(1 + self.nu * inputs**2)
+        outputs = (1/(2*self.nu)) * tf.math.log(1 + self.nu * inputs**2)
         return outputs
 
 class MicroBlock(Layer):
