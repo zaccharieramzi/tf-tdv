@@ -246,31 +246,23 @@ class UnetMultiscaleResidual(Model):
         self.pooling = pooling
         self.activation_str = activation_str
         self.use_bias = use_bias
-        macro_blocks_kwargs = dict(
-            n_scales=self.n_scales,
-            n_filters=self.n_filters,
-            multiplier=self.multiplier,
-            activation_str=self.activation_str,
-            pooling=self.pooling,
-            use_bias=self.use_bias,
-        )
-        self.first_macro_block = MacroBlock(
-            first_macro=True,
-            name='first_macro_block',
-            **macro_blocks_kwargs,
-        )
-        self.macro_blocks = [MacroBlock(**macro_blocks_kwargs) for _ in range(self.n_macro-2)]
-        self.last_macro_block = MacroBlock(
-            last_macro=True,
-            name='last_macro_block',
-            **macro_blocks_kwargs,
-        )
+        self.macro_blocks = [
+            MacroBlock(
+                n_scales=self.n_scales,
+                n_filters=self.n_filters,
+                multiplier=self.multiplier,
+                activation_str=self.activation_str,
+                pooling=self.pooling,
+                use_bias=self.use_bias,
+                first_macro=i_macro==0,
+                last_macro=i_macro==self.n_macro-1,
+            )
+            for i_macro in range(self.n_macro)
+        ]
 
     def call(self, inputs):
-        outputs = self.first_macro_block(inputs)
         for block in self.macro_blocks:
             outputs = block(outputs)
-        outputs = self.last_macro_block(outputs)
         return outputs
 
 class ZeroMean(Constraint):
