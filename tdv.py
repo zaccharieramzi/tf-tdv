@@ -10,13 +10,20 @@ BLUR_KERNEL = BLUR_KERNEL @ BLUR_KERNEL.T
 BLUR_KERNEL /= BLUR_KERNEL.sum()
 
 class Conv(Layer):
-    def __init__(self, n_filters=32, kernel_size=3, use_bias=False, kernel_constraint=None, strides=None, **kwargs):
+    def __init__(self, n_filters=32, kernel_size=3, use_bias=False, kernel_constraint=None, strides=(1, 1), **kwargs):
         super().__init__(**kwargs)
         self.n_filters = n_filters
         self.kernel_size = kernel_size
         self.use_bias = use_bias
         self.kernel_constraint = kernel_constraint
         self.strides = strides
+        self.pad_size = self.kernel_size // 2
+        self.paddings = [
+            [0, 0],
+            [self.pad_size, self.pad_size],
+            [self.pad_size, self.pad_size],
+            [0, 0],
+        ]
         self.conv = Conv2D(
             self.n_filters,
             self.kernel_size,
@@ -29,18 +36,13 @@ class Conv(Layer):
     def call(self, inputs):
         outputs = tf.pad(
             inputs,
-            [
-                [0, 0],
-                [1, 1],
-                [1, 1],
-                [0, 0],
-            ],
+            self.paddings,
             "SYMMETRIC",
         )
         outputs = self.conv(outputs)
         return outputs
 
-class ConvTranspose(object):
+class ConvTranspose(Layer):
     def __init__(self, n_filters=32, kernel_size=3, use_bias=False, kernel_constraint=None, **kwargs):
         super().__init__(**kwargs)
         self.n_filters = n_filters
@@ -51,25 +53,14 @@ class ConvTranspose(object):
             self.n_filters,
             self.kernel_size,
             strides=(2, 2),
-            padding='valid',
+            padding='same',
             use_bias=self.use_bias,
             kernel_constraint=self.kernel_constraint,
         )
 
     def call(self, inputs):
-        outputs = tf.pad(
-            inputs,
-            [
-                [0, 0],
-                [1, 1],
-                [1, 1],
-                [0, 0],
-            ],
-            "SYMMETRIC",
-        )
-        outputs = self.conv(outputs)
+        outputs = self.conv(inputs)
         return outputs
-
 
 class StudentActivation(Layer):
     def __init__(self, nu=9, **kwargs):
@@ -136,8 +127,8 @@ class BlurDownSample(Layer):
             inputs,
             [
                 [0, 0],
-                [1, 1],
-                [1, 1],
+                [2, 2],
+                [2, 2],
                 [0, 0],
             ],
             "SYMMETRIC",
@@ -173,8 +164,8 @@ class BlurUpSample(Layer):
             outputs,
             [
                 [0, 0],
-                [1, 1],
-                [1, 1],
+                [2, 2],
+                [2, 2],
                 [0, 0],
             ],
             "SYMMETRIC",
@@ -267,7 +258,6 @@ class MacroBlock(Layer):
             Conv(
                 self.n_filters*self.multiplier**i_scale,
                 kernel_size=1,
-                padding='same',
                 use_bias=False,
             )
             for i_scale in range(self.n_scales-1)
