@@ -68,14 +68,14 @@ def test_tdv_gradient(n_macro, n_scales):
     scale = 1.
 
     # compute the gradient using the implementation
-    grad_scale = tf.reduce_sum(x*model(scale*x))
+    grad_scale = tf.reduce_sum(x*model(scale*x)).numpy()
 
     # check it numerically
     epsilon = 1e-4
-    l_p = compute_loss(scale+epsilon).item()
-    l_n = compute_loss(scale-epsilon).item()
+    l_p = compute_loss(scale+epsilon).numpy()
+    l_n = compute_loss(scale-epsilon).numpy()
     grad_scale_num = (l_p - l_n) / (2 * epsilon)
 
-    condition = np.abs(grad_scale - grad_scale_num) < 1e-3
-    print(f'grad_scale: {grad_scale:.7f} num_grad_scale {grad_scale_num:.7f} success: {condition}')
+    condition = np.abs(grad_scale - grad_scale_num) / grad_scale_num < 1e-2
+    print(f'grad_scale: {grad_scale} num_grad_scale {grad_scale_num} success: {condition}')
     assert condition
