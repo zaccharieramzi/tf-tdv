@@ -350,6 +350,7 @@ class TDV(Model):
             activation_str='student',
             use_bias=False,
             shallow=False,
+            denoising=False,
             **kwargs,
         ):
         super().__init__(**kwargs)
@@ -361,6 +362,12 @@ class TDV(Model):
         self.activation_str = activation_str
         self.use_bias = use_bias
         self.shallow = shallow
+        self.denoising = denoising
+        if self.denoising:
+            self.alpha = self.add_weight(
+                shape=(1,),
+                initializer=tf.keras.initializers.constant(0.01),
+            )
         self.K = Conv(
             self.n_filters,
             kernel_size=3,  # got this from the code
@@ -392,6 +399,10 @@ class TDV(Model):
             g.watch(inputs)
             r = self.energy(inputs)
         grad = g.gradient(r, inputs)
+        if self.denoising:
+            outputs = inputs - self.alpha * grad
+        else:
+            outputs = grad
         return grad
 
     def energy(self, inputs):
