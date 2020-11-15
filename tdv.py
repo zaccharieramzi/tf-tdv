@@ -9,6 +9,59 @@ BLUR_KERNEL = np.asarray([1, 4, 6, 4, 1], dtype=np.float32)[:, np.newaxis]
 BLUR_KERNEL = BLUR_KERNEL @ BLUR_KERNEL.T
 BLUR_KERNEL /= BLUR_KERNEL.sum()
 
+class Conv(Layer):
+    def __init__(self, n_filters=32, kernel_size=3, use_bias=False, kernel_constraint=None, strides=(1, 1), **kwargs):
+        super().__init__(**kwargs)
+        self.n_filters = n_filters
+        self.kernel_size = kernel_size
+        self.use_bias = use_bias
+        self.kernel_constraint = kernel_constraint
+        self.strides = strides
+        self.pad_size = self.kernel_size // 2
+        self.paddings = [
+            [0, 0],
+            [self.pad_size, self.pad_size],
+            [self.pad_size, self.pad_size],
+            [0, 0],
+        ]
+        self.conv = Conv2D(
+            self.n_filters,
+            self.kernel_size,
+            padding='valid',
+            strides=self.strides,
+            use_bias=self.use_bias,
+            kernel_constraint=self.kernel_constraint,
+        )
+
+    def call(self, inputs):
+        outputs = tf.pad(
+            inputs,
+            self.paddings,
+            "SYMMETRIC",
+        )
+        outputs = self.conv(outputs)
+        return outputs
+
+class ConvTranspose(Layer):
+    def __init__(self, n_filters=32, kernel_size=3, use_bias=False, kernel_constraint=None, **kwargs):
+        super().__init__(**kwargs)
+        self.n_filters = n_filters
+        self.kernel_size = kernel_size
+        self.use_bias = use_bias
+        self.kernel_constraint = kernel_constraint
+        self.conv = Conv2DTranspose(
+            self.n_filters,
+            self.kernel_size,
+            strides=(2, 2),
+            padding='same',
+            use_bias=self.use_bias,
+            kernel_constraint=self.kernel_constraint,
+        )
+
+    def call(self, inputs):
+        outputs = self.conv(inputs)
+        return outputs
+
 class StudentActivation(Layer):
     def __init__(self, nu=9, **kwargs):
         super().__init__(**kwargs)
@@ -38,11 +91,9 @@ class MicroBlock(Layer):
             self.activation = StudentActivation()
         else:
             self.activation = Activation(self.activation_str)
-        self.last_conv = Conv2D(
+        self.last_conv = Conv(
             self.n_filters,
             kernel_size=3,
-            padding='same',
-            activation=None,
             use_bias=self.use_bias,
         )
 
@@ -62,7 +113,7 @@ class BlurDownSample(Layer):
         self.pooling = pooling
         self.blur_kernel = tf.constant(BLUR_KERNEL)[..., None, None]
         if self.pooling == 'conv':
-            self.pool = Conv2D(n_filters, 3, padding='same', use_bias=False)
+            self.pool = Conv(n_filters, 3, use_bias=False)
         else:
             self.pool = MaxPool2D((2, 2), strides=(1, 1))
 
@@ -72,12 +123,22 @@ class BlurDownSample(Layer):
         self.point_wise_kernel = tf.eye(in_channels)[None, None]
 
     def call(self, inputs):
-        blurred_downsample_inputs = tf.nn.separable_conv2d(
+        padded_inputs = tf.pad(
             inputs,
+            [
+                [0, 0],
+                [2, 2],
+                [2, 2],
+                [0, 0],
+            ],
+            "SYMMETRIC",
+        )
+        blurred_downsample_inputs = tf.nn.separable_conv2d(
+            padded_inputs,
             self.blur_kernel,
             self.point_wise_kernel,
             strides=[1, 2, 2, 1],
-            padding='SAME',
+            padding='VALID',
         )
         outputs = self.pool(blurred_downsample_inputs)
         return outputs
@@ -88,7 +149,7 @@ class BlurUpSample(Layer):
         self.unpooling = unpooling
         self.blur_kernel = tf.constant(BLUR_KERNEL)[..., None, None]
         if self.unpooling == 'conv':
-            self.unpool = Conv2DTranspose(n_filters, 3, strides=(2, 2), padding='same', use_bias=False)
+            self.unpool = ConvTranspose(n_filters, 3, use_bias=False)
         else:
             self.unpool = UpSampling2D((2, 2))
 
@@ -99,12 +160,22 @@ class BlurUpSample(Layer):
 
     def call(self, inputs):
         outputs = self.unpool(inputs)
+        outputs = tf.pad(
+            outputs,
+            [
+                [0, 0],
+                [2, 2],
+                [2, 2],
+                [0, 0],
+            ],
+            "SYMMETRIC",
+        )
         outputs = tf.nn.separable_conv2d(
             outputs,
             self.blur_kernel,
             self.point_wise_kernel,
             strides=[1, 1, 1, 1],
-            padding='SAME',
+            padding='VALID',
         )
         return outputs
 
@@ -166,20 +237,17 @@ class MacroBlock(Layer):
             ]
         elif self.pooling == 'conv':
             self.pools = [
-                Conv2D(
+                Conv(
                     self.n_filters*self.multiplier**i_scale,
                     kernel_size=3,
                     strides=2,
-                    padding='same',
                 )
                 for i_scale in range(self.n_scales)
             ]
             self.unpools = [
-                Conv2DTranspose(
+                ConvTranspose(
                     self.n_filters*self.multiplier**i_scale,
                     kernel_size=3,
-                    strides=2,
-                    padding='same',
                 )
                 for i_scale in range(self.n_scales-1)
             ]
@@ -187,10 +255,9 @@ class MacroBlock(Layer):
             raise ValueError(f'Not possible to using pooling {self.pooling}')
         # concatenation
         self.conv_concats = [
-            Conv2D(
+            Conv(
                 self.n_filters*self.multiplier**i_scale,
                 kernel_size=1,
-                padding='same',
                 use_bias=False,
             )
             for i_scale in range(self.n_scales-1)
@@ -283,6 +350,7 @@ class TDV(Model):
             activation_str='student',
             use_bias=False,
             shallow=False,
+            denoising=False,
             **kwargs,
         ):
         super().__init__(**kwargs)
@@ -294,11 +362,16 @@ class TDV(Model):
         self.activation_str = activation_str
         self.use_bias = use_bias
         self.shallow = shallow
-        self.K = Conv2D(
+        self.denoising = denoising
+        if self.denoising:
+            self.alpha = self.add_weight(
+                shape=(1,),
+                initializer=tf.keras.initializers.constant(0.01),
+            )
+        self.K = Conv(
             self.n_filters,
             kernel_size=3,  # got this from the code
             # https://github.com/VLOGroup/tdv/blob/fe220b3c39/ddr/tdv.py#L186
-            padding='same',
             use_bias=False,
             kernel_constraint=ZeroMean(),
         )
@@ -314,10 +387,9 @@ class TDV(Model):
                 activation_str=self.activation_str,
                 use_bias=self.use_bias,
             )
-        self.w = Conv2D(
+        self.w = Conv(
             1,
             kernel_size=1,
-            padding='same',
             use_bias=False,
         )
 
@@ -326,8 +398,12 @@ class TDV(Model):
         with tf.GradientTape(watch_accessed_variables=False) as g:
             g.watch(inputs)
             r = self.energy(inputs)
-        prox = g.gradient(r, inputs)
-        return prox
+        grad = g.gradient(r, inputs)
+        if self.denoising:
+            outputs = inputs - self.alpha * grad
+        else:
+            outputs = grad
+        return outputs
 
     def energy(self, inputs):
         high_pass_inputs = self.K(inputs)
@@ -341,8 +417,8 @@ class TV(Model):
         with tf.GradientTape(watch_accessed_variables=False) as g:
             g.watch(inputs)
             r = self.energy(inputs)
-        prox = g.gradient(r, inputs)
-        return prox
+        grad = g.gradient(r, inputs)
+        return grad
 
     def energy(self, inputs):
         outputs = tf.image.total_variation(inputs)
