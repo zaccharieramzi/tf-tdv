@@ -281,6 +281,7 @@ class TDV(Model):
             pooling='blur-conv',
             activation_str='student',
             use_bias=False,
+            linear=False,
             **kwargs,
         ):
         super().__init__(**kwargs)
@@ -291,6 +292,7 @@ class TDV(Model):
         self.pooling = pooling
         self.activation_str = activation_str
         self.use_bias = use_bias
+        self.linear = linear
         self.K = Conv2D(
             self.n_filters,
             kernel_size=3,  # got this from the code
@@ -299,15 +301,16 @@ class TDV(Model):
             use_bias=False,
             kernel_constraint=ZeroMean(),
         )
-        self.N = UnetMultiscaleResidual(
-            n_macro=self.n_macro,
-            n_scales=self.n_scales,
-            n_filters=self.n_filters,
-            multiplier=self.multiplier,
-            pooling=self.pooling,
-            activation_str=self.activation_str,
-            use_bias=self.use_bias,
-        )
+        if not self.linear:
+            self.N = UnetMultiscaleResidual(
+                n_macro=self.n_macro,
+                n_scales=self.n_scales,
+                n_filters=self.n_filters,
+                multiplier=self.multiplier,
+                pooling=self.pooling,
+                activation_str=self.activation_str,
+                use_bias=self.use_bias,
+            )
         self.w = Conv2D(
             1,
             kernel_size=1,
@@ -325,7 +328,10 @@ class TDV(Model):
 
     def energy(self, inputs):
         high_pass_inputs = self.K(inputs)
-        outputs = self.N(high_pass_inputs)
+        if self.linear:
+            outputs = high_pass_inputs
+        else:
+            outputs = self.N(high_pass_inputs)
         outputs = self.w(outputs)
         outputs = tf.reduce_sum(outputs, axis=[1, 2])
         return outputs
