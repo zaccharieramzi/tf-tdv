@@ -403,7 +403,7 @@ class TDV(Model):
             outputs = inputs - self.alpha * grad
         else:
             outputs = grad
-        return grad
+        return outputs
 
     def energy(self, inputs):
         high_pass_inputs = self.K(inputs)
