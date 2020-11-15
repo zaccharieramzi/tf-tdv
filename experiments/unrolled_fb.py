@@ -2,6 +2,8 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 
 
+EPSILON = tf.constant(1e-6)
+
 class UnrolledFB(Model):
     """The unrolled Forward-Backward model with any kind of regularizer gradient.
     """
@@ -56,8 +58,8 @@ class UnrolledFB(Model):
     def call(self, inputs):
         current_image = inputs
         for reg_grad in self.reg_grads:
-            reg_grad_eval = self.alpha * reg_grad(current_image)
-            grad_eval = self.lamda * self.grad(current_image, inputs)
+            reg_grad_eval = (self.alpha + EPSILON) * reg_grad(current_image)
+            grad_eval = (self.lamda + EPSILON) * self.grad(current_image, inputs)
             new_image = current_image - grad_eval - reg_grad_eval
             # NOTE: we use this decorrelation of var names to allow for
             # Nesterov implementation
