@@ -391,8 +391,8 @@ class TDV(Model):
         with tf.GradientTape(watch_accessed_variables=False) as g:
             g.watch(inputs)
             r = self.energy(inputs)
-        prox = g.gradient(r, inputs)
-        return prox
+        grad = g.gradient(r, inputs)
+        return grad
 
     def energy(self, inputs):
         high_pass_inputs = self.K(inputs)
@@ -406,8 +406,8 @@ class TV(Model):
         with tf.GradientTape(watch_accessed_variables=False) as g:
             g.watch(inputs)
             r = self.energy(inputs)
-        prox = g.gradient(r, inputs)
-        return prox
+        grad = g.gradient(r, inputs)
+        return grad
 
     def energy(self, inputs):
         outputs = tf.image.total_variation(inputs)
