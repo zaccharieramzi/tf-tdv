@@ -335,3 +335,15 @@ class TDV(Model):
         outputs = self.w(outputs)
         outputs = tf.reduce_sum(outputs, axis=[1, 2])
         return outputs
+
+class TV(Model):
+    def call(self, inputs):
+        with tf.GradientTape(watch_accessed_variables=False) as g:
+            g.watch(inputs)
+            r = self.energy(inputs)
+        prox = g.gradient(r, inputs)
+        return prox
+
+    def energy(self, inputs):
+        outputs = tf.image.total_variation(inputs)
+        return outputs
