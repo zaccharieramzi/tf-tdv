@@ -31,6 +31,8 @@ class UnrolledFB(Model):
         # I thought that the 2 step sizes were common
         # but in the code it appears that they are not:
         # https://github.com/VLOGroup/tdv/blob/master/model.py#L111
+        # TODO: It might be best not to have the weights in the model as they will
+        # not be saved in the model weights ...
         self.alpha = self.add_weight(
             shape=(1,),
             initializer=tf.keras.initializers.constant(self.init_step_size),
