@@ -105,6 +105,8 @@ def im_dataset(
             partial(select_patch_in_image, patch_size=patch_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE
         )
+    else:
+        image_patch_ds = image_grey_ds
     image_noisy_ds = image_patch_ds.map(
         lambda patch: (partial(add_noise, noise_std_range=noise_std)(patch), patch),
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
