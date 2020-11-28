@@ -20,10 +20,11 @@ def train(batch_size=8, noise_std=(25,25), n_steps=1, model_kwargs=None, non_lin
     model.compile(loss='mse', optimizer=Adam(1e-4))
     n_steps_per_epoch = 400 // batch_size
     epochs = int(n_steps//n_steps_per_epoch)
+    save_path = f'denoising_unrolled_fb_tdv_{non_linearity}.h5'
     model.fit(
         train_ds,
         epochs=epochs,
         steps_per_epoch=n_steps_per_epoch,
-        callbacks=[TQDMProgressBar(), ModelCheckpoint(save_weights_only=True, period=epochs)],
+        callbacks=[TQDMProgressBar(), ModelCheckpoint(save_path, save_weights_only=True, period=epochs)],
         verbose=0,
     )
