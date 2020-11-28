@@ -6,7 +6,7 @@ from functools import partial
 
 import tensorflow as tf
 
-from config import *
+from experiments.config import *
 
 
 # normalisation
