@@ -51,9 +51,7 @@ class MultiScaleModel(tf.keras.models.Model):
         return outputs
 
 def tf_psnr(y_true, y_pred):
-    max_pixel = tf.math.reduce_max(y_true)
-    min_pixel = tf.math.reduce_min(y_true)
-    return tf.image.psnr(y_true, y_pred, max_pixel - min_pixel)
+    return tf.image.psnr(y_true, y_pred, 1.)
 
 def eval(batch_size=1, noise_std=(25,25), n_samples=100, model_kwargs=None, non_linearity='student'):
     val_ds = im_dataset_bsd500(
